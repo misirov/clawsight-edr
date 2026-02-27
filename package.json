@@ -1,5 +1,5 @@
 {
-  "name": "@pablomisirov/clawdstrike-plugin",
+  "name": "@cantinasecurity/clawdstrike",
   "version": "0.1.1",
   "packageManager": "pnpm@9.15.3",
   "description": "ClawdStrike security guardrails and telemetry plugin for OpenClaw",
@@ -16,6 +16,7 @@
     ]
   },
   "main": "index.ts",
+  "author": "Pablo Misirov <pablo@spearbit.com>",
   "license": "MIT",
   "repository": {
     "type": "git",

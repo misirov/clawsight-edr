@@ -84,7 +84,7 @@ function extractHistorySnippets(value: unknown, maxItems = 8): string[] {
 }
 
 const plugin = {
-  id: "clawdstrike-plugin",
+  id: "clawdstrike",
   name: "ClawdStrike",
   description: "Telemetry + guardrails exporter (no OpenClaw source changes required).",
   // NOTE: OpenClaw uses openclaw.plugin.json for config validation. This runtime schema is best-effort.

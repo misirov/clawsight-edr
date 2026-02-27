@@ -1,5 +1,5 @@
 {
-  "id": "clawdstrike-plugin",
+  "id": "clawdstrike",
   "name": "ClawdStrike",
   "description": "Telemetry + guardrails exporter (no OpenClaw source changes required).",
   "version": "0.1.1",

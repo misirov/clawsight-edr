@@ -92,7 +92,7 @@ export function resolvePluginConfig(raw: Record<string, unknown>): ClawdstrikePl
   const localRulesPath =
     asString(raw.localRulesPath) ??
     (mode === "local"
-      ? path.join(os.homedir(), ".openclaw", "plugins", "clawdstrike-plugin", "rules.json")
+      ? path.join(os.homedir(), ".openclaw", "plugins", "clawdstrike", "rules.json")
       : undefined);
 
   const ingestPath = asString(raw.ingestPath) ?? "/v1/telemetry/ingest";

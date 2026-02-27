@@ -157,7 +157,7 @@ export function createClawdstrikeService(params: {
   let inventorySnapshotInFlight = false;
 
   return {
-    id: "clawdstrike-plugin",
+    id: "clawdstrike",
     async start(ctx) {
       inventorySnapshotInFlight = false;
       if (inventoryTimer) {
