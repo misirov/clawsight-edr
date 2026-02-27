@@ -15,7 +15,7 @@ ClawdStrike is an OpenClaw plugin that sits between the AI agent and external sy
                                     +----------^---+------------+
                                                |   |
                                     telemetry  |   | decisions
-                                    (events)   |   | (allow/block/warn)
+                                    (events)   |   | (allow/block/warn/confirm/modify)
                                                |   |
 +--------+     +----------+     +--------------+---v-----------+
 |        |     |          |     |      ClawdStrike Plugin       |

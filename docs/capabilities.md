@@ -61,7 +61,7 @@ The same directive text is also prepended to the user message each turn via `pre
 /cs directive preview             See full injected text
 ```
 
-## Layer 2: Tool and Message Guardrails
+## Layer 3: Tool and Message Guardrails
 
 **Hooks**: `before_tool_call`, `message_sending`
 **Mode**: Local and Platform (enforce)
@@ -124,7 +124,7 @@ When the platform is unreachable:
 
 All fail-open/fail-closed outcomes are recorded in telemetry.
 
-## Layer 3: Output Enforcement (Deterministic)
+## Layer 4: Output Enforcement (Deterministic)
 
 **Hook**: `message_sending`
 **Mode**: Local only
@@ -162,7 +162,7 @@ Output rules use the `output` scope in `rules.json`:
 }
 ```
 
-## Layer 4: Telemetry and Observability
+## Layer 5: Telemetry and Observability
 
 **Mode**: Platform modes, or local mode with `platformUrl`
 
