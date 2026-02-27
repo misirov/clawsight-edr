@@ -76,7 +76,7 @@ function patchConfigClearPlatform() {
   try {
     const raw = fs.readFileSync(configPath, "utf-8");
     const config = JSON.parse(raw);
-    const csConfig = config?.plugins?.entries?.clawdstrike?.config;
+    const csConfig = config?.plugins?.entries?.["clawdstrike-plugin"]?.config;
     if (!csConfig) return;
     let changed = false;
     if (csConfig.apiToken && typeof csConfig.apiToken === "string" && csConfig.apiToken.includes("${")) {
@@ -131,31 +131,31 @@ if (cmd === "install") {
   // 1) Install plugin
   run(openclawBin, ["plugins", "install", ...(link ? ["-l"] : []), pluginRoot]);
   // 2) Enable plugin
-  run(openclawBin, ["plugins", "enable", "clawdstrike"]);
+  run(openclawBin, ["plugins", "enable", "clawdstrike-plugin"]);
   // 3) Configure plugin
-  run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.mode", mode]);
+  run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.mode", mode]);
 
   if (isLocal) {
     // Local mode: set rules path. Default rules (46 rules, 11 directives) are
     // created automatically by LocalRuleStore on first gateway start when the
     // file doesn't exist. This avoids duplicating the default rules here.
-    const rulesDir = path.join(os.homedir(), ".openclaw", "plugins", "clawdstrike");
+    const rulesDir = path.join(os.homedir(), ".openclaw", "plugins", "clawdstrike-plugin");
     const rulesPath = path.join(rulesDir, "rules.json");
     if (!fs.existsSync(rulesDir)) {
       fs.mkdirSync(rulesDir, { recursive: true });
     }
-    run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.localRulesPath", rulesPath]);
+    run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.localRulesPath", rulesPath]);
 
     // Optional: configure SIEM telemetry alongside local rules
     if (platformUrl) {
-      run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.platformUrl", platformUrl]);
+      run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.platformUrl", platformUrl]);
       if (token) {
-        run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.apiToken", token]);
+        run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.apiToken", token]);
       } else if (tokenEnv) {
         run(openclawBin, [
           "config",
           "set",
-          "plugins.entries.clawdstrike.config.apiToken",
+          "plugins.entries.clawdstrike-plugin.config.apiToken",
           `\${${tokenEnv}}`,
         ]);
         process.stderr.write(`Note: set ${tokenEnv} in the environment of the OpenClaw gateway process.\n`);
@@ -163,7 +163,7 @@ if (cmd === "install") {
         run(openclawBin, [
           "config",
           "set",
-          "plugins.entries.clawdstrike.config.apiToken",
+          "plugins.entries.clawdstrike-plugin.config.apiToken",
           "${CLAWDSTRIKE_API_TOKEN}",
         ]);
         process.stderr.write("Note: set CLAWDSTRIKE_API_TOKEN in the environment of the OpenClaw gateway process.\n");
@@ -184,26 +184,26 @@ if (cmd === "install") {
   }
 
   // Platform modes (audit/enforce)
-  run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.platformUrl", platformUrl]);
+  run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.platformUrl", platformUrl]);
   if (agentName) {
-    run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.agentName", agentName]);
+    run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.agentName", agentName]);
   }
   if (agentInstanceId) {
     run(openclawBin, [
       "config",
       "set",
-      "plugins.entries.clawdstrike.config.agentInstanceId",
+      "plugins.entries.clawdstrike-plugin.config.agentInstanceId",
       agentInstanceId,
     ]);
   }
 
   if (token) {
-    run(openclawBin, ["config", "set", "plugins.entries.clawdstrike.config.apiToken", token]);
+    run(openclawBin, ["config", "set", "plugins.entries.clawdstrike-plugin.config.apiToken", token]);
   } else if (tokenEnv) {
     run(openclawBin, [
       "config",
       "set",
-      "plugins.entries.clawdstrike.config.apiToken",
+      "plugins.entries.clawdstrike-plugin.config.apiToken",
       `\${${tokenEnv}}`,
     ]);
     process.stderr.write(
@@ -214,7 +214,7 @@ if (cmd === "install") {
     run(openclawBin, [
       "config",
       "set",
-      "plugins.entries.clawdstrike.config.apiToken",
+      "plugins.entries.clawdstrike-plugin.config.apiToken",
       "${CLAWDSTRIKE_API_TOKEN}",
     ]);
     process.stderr.write(

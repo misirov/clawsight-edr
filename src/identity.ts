@@ -59,7 +59,7 @@ function asString(value: unknown): string | undefined {
  * @returns Absolute path to the default identity file.
  */
 function defaultIdentityPath(): string {
-  return path.join(os.homedir(), ".openclaw", "plugins", "clawdstrike", "identity.json");
+  return path.join(os.homedir(), ".openclaw", "plugins", "clawdstrike-plugin", "identity.json");
 }
 
 /**
