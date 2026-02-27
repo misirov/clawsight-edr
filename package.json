@@ -1,0 +1,19 @@
+{
+  "name": "@clawdstrike/clawdstrike",
+  "version": "0.1.0",
+  "packageManager": "pnpm@9.15.3",
+  "description": "ClawdStrike telemetry + guardrails plugin for OpenClaw.",
+  "type": "module",
+  "bin": {
+    "clawdstrike": "./bin/clawdstrike.mjs"
+  },
+  "dependencies": {
+    "openclaw": "^2026.2.14"
+  },
+  "devDependencies": {},
+  "openclaw": {
+    "extensions": [
+      "./index.ts"
+    ]
+  }
+}
