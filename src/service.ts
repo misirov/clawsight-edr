@@ -46,6 +46,14 @@ import { TelemetryQueue } from "./telemetry/queue.js";
 /** Shared ref so index.ts hooks can access the local rule store. */
 export const localRuleStoreRef: { current: LocalRuleStore | null } = { current: null };
 
+function isInsecurePlatformUrl(url: string): boolean {
+  if (!url) return false;
+  const lower = url.toLowerCase();
+  if (!lower.startsWith("http://")) return false;
+  const host = lower.slice(7).split(/[:/]/)[0];
+  return host !== "localhost" && host !== "127.0.0.1" && host !== "::1";
+}
+
 function safeStringify(value: unknown): string {
   try {
     return JSON.stringify(value);
@@ -189,6 +197,11 @@ export function createClawdstrikeService(params: {
         let localQueue: TelemetryQueue | null = null;
         const hasPlatform = Boolean(cfg.platformUrl);
         if (hasPlatform) {
+          if (isInsecurePlatformUrl(cfg.platformUrl)) {
+            ctx.logger.warn(
+              "clawdstrike: platformUrl is HTTP on a non-localhost host. Telemetry and API token will be sent unencrypted. Use HTTPS in production.",
+            );
+          }
           let runtimeIdentity:
             | Awaited<ReturnType<typeof resolveRuntimeAgentIdentity>>
             | null = null;
@@ -284,6 +297,12 @@ export function createClawdstrikeService(params: {
         ctx.logger.warn("clawdstrike: platformUrl is not configured. Plugin disabled until configured.");
         setRuntime(null);
         return;
+      }
+
+      if (isInsecurePlatformUrl(cfg.platformUrl)) {
+        ctx.logger.warn(
+          "clawdstrike: platformUrl is HTTP on a non-localhost host. Telemetry and API token will be sent unencrypted. Use HTTPS in production.",
+        );
       }
 
       let runtimeIdentity:
