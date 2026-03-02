@@ -195,6 +195,9 @@ export function createClawsightService(params: {
 
         // If platformUrl is configured, stand up telemetry pipeline to SIEM
         let localQueue: TelemetryQueue | null = null;
+        let runtimeIdentity:
+          | Awaited<ReturnType<typeof resolveRuntimeAgentIdentity>>
+          | null = null;
         const hasPlatform = Boolean(cfg.platformUrl);
         if (hasPlatform) {
           if (isInsecurePlatformUrl(cfg.platformUrl)) {
@@ -202,9 +205,6 @@ export function createClawsightService(params: {
               "clawsight: platformUrl is HTTP on a non-localhost host. Telemetry and API token will be sent unencrypted. Use HTTPS in production.",
             );
           }
-          let runtimeIdentity:
-            | Awaited<ReturnType<typeof resolveRuntimeAgentIdentity>>
-            | null = null;
           try {
             runtimeIdentity = await resolveRuntimeAgentIdentity(cfg);
             cfg.agentInstanceId = runtimeIdentity.agentInstanceId;
@@ -244,6 +244,53 @@ export function createClawsightService(params: {
               },
             },
           } as any);
+
+          const emitInventorySnapshot = async (reason: "startup" | "periodic") => {
+            if (!localQueue || inventorySnapshotInFlight) return;
+            inventorySnapshotInFlight = true;
+            const startedAt = Date.now();
+            try {
+              const { snapshot } = await collectAgentInventorySnapshot({
+                cfg,
+                reason,
+                runtimeIdentity: runtimeIdentity || undefined,
+              });
+              localQueue.emit({
+                category: "agent",
+                action: "inventory_snapshot",
+                severity: "info",
+                outcome: "allow",
+                durationMs: Date.now() - startedAt,
+                traceId: bootstrapTraceId,
+                rootExecutionId: bootstrapTraceId,
+                payload: {
+                  type: "agent.inventory_snapshot",
+                  inventory: snapshot,
+                },
+              } as any);
+            } catch (err) {
+              localQueue.emit({
+                category: "agent",
+                action: "inventory_snapshot_error",
+                severity: "warn",
+                traceId: bootstrapTraceId,
+                rootExecutionId: bootstrapTraceId,
+                durationMs: Date.now() - startedAt,
+                outcome: "error",
+                outcomeReason: "inventory snapshot collection failed",
+                errorClass: "inventory_collection_error",
+                errorCode: "inventory_snapshot_failed",
+                payload: { reason, error: String(err) },
+              } as any);
+            } finally {
+              inventorySnapshotInFlight = false;
+            }
+          };
+
+          await emitInventorySnapshot("startup");
+          inventoryTimer = setInterval(() => {
+            void emitInventorySnapshot("periodic");
+          }, 10 * 60 * 1000);
         }
 
         const localRt: ClawsightRuntime = {
@@ -276,6 +323,10 @@ export function createClawsightService(params: {
             return { status: "blocked", reason: "payments disabled in local mode" };
           },
           stop: async () => {
+            if (inventoryTimer) {
+              clearInterval(inventoryTimer);
+              inventoryTimer = null;
+            }
             if (localQueue) {
               await localQueue.stop();
               localQueue = null;
