@@ -5,13 +5,14 @@ EDR for AI agents.
 ## Table of Contents
 
 - [What is ClawSight?](#what-is-clawsight)
-- [Installation](#installation)
-- [Commands](#commands)
+- [Getting Started](#getting-started)
+  - [Option 1: Local policies only](#option-1-local-policies-only)
+  - [Option 2: Local policies + SIEM](#option-2-local-policies--siem)
+- [Managing Rules from Telegram](#managing-rules-from-telegram)
 - [Architecture](#architecture)
 - [Default Rules](#default-rules)
 - [Approval Flow](#approval-flow)
-- [SIEM Mode](#siem-mode)
-- [Configuration](#configuration)
+- [Configuration Reference](#configuration-reference)
 - [License](#license)
 
 **Docs:**
@@ -19,134 +20,158 @@ EDR for AI agents.
 
 ## What is ClawSight?
 
-ClawSight is an endpoint detection and response (EDR) plugin for OpenClaw AI agents. Where traditional EDR monitors host processes and syscalls, ClawSight treats the agent as the endpoint — hooking into the OpenClaw agent lifecycle to intercept tool calls, outbound messages, LLM interactions, and tool outputs at the plugin layer before they execute. It acts as a policy enforcement point (PEP) that can block, allow, warn on, or require human approval for any agent action based on configurable rules.
+ClawSight is an endpoint detection and response (EDR) plugin for OpenClaw AI agents. It hooks into the agent lifecycle — intercepting tool calls, outbound messages, and LLM interactions — and enforces security policies before actions execute.
 
-ClawSight operates in two modes:
+It ships with 46 default rules covering reverse shells, credential theft, persistence mechanisms, exfiltration domains, and encoded payloads. You manage everything from Telegram (or Discord/Slack) using `/cs` commands.
 
-- **Local policy guard** (`--mode local`): Enforces security rules from a local `rules.json` file entirely offline. No data leaves the machine. Ships with 46 default rules covering common attack vectors (reverse shells, credential theft, persistence mechanisms, exfiltration domains, encoded payloads) and 11 prompt directives. Rules are fully manageable at runtime via `/cs` chat commands.
+---
 
-- **SIEM-connected** (`--mode audit|enforce --platform-url <url> --token <token>`): Streams full agent telemetry (tool calls, messages, LLM I/O, session lifecycle, policy decisions) to the ClawSight SIEM platform with distributed tracing. The SIEM provides dashboards for traces, policy violations, alerts, intent drift detection, and agent inventory. In `enforce` mode, the platform returns real-time allow/block/modify decisions; in `audit` mode, it logs everything without blocking.
+## Getting Started
 
-Both modes can be combined: `--mode local --platform-url <url>` enforces rules locally while streaming telemetry to the SIEM for observability.
+### Option 1: Local policies only
 
-## Installation
+Best for: running an OpenClaw agent on your machine and managing security rules directly from Telegram. No external server needed. No data leaves your machine.
 
-Install on OpenClaw:
+**Step 1: Install the plugin**
 
 ```bash
 npx -y @cantinasecurity/clawsight install --mode local --link
 ```
 
-Then restart the gateway to apply changes:
+**Step 2: Restart the gateway**
 
 ```bash
 openclaw gateway restart
 ```
 
-## Commands
+**Step 3: Open Telegram and verify it's running**
 
-Manage ClawSight from any connected chat channel (Telegram, Discord, Slack):
-
-### Status & inspection
-
-| Command | Description |
-|---------|-------------|
-| `/cs status` | Show current mode, rule count, and enforcement summary |
-| `/cs rules` | List all active rules with IDs and details |
-| `/cs directives` | List prompt directives with indices |
-| `/cs directive preview` | Show the full injected system prompt |
-
-### Block / allow rules
-
-| Command | Description |
-|---------|-------------|
-| `/cs block command <text>` | Block shell commands containing text |
-| `/cs block domain <pattern>` | Block a domain including subdomains |
-| `/cs block ip <addr>` | Block an IP address |
-| `/cs block tool <name> [pattern]` | Block a specific tool, optionally matching a command pattern |
-| `/cs block message <text>` | Block outbound messages containing text |
-| `/cs allow command <text>` | Allow shell commands containing text (same types as block) |
-| `/cs remove <id...>` | Remove one or more rules by ID |
-| `/cs reset confirm` | Reset all rules and directives to defaults |
-
-### Approval rules (human-in-the-loop)
-
-| Command | Description |
-|---------|-------------|
-| `/cs confirm command <text>` | Require user approval for matching shell commands |
-| `/cs confirm domain <pattern>` | Require user approval for domain access |
-| `/cs confirm tool <name> [pattern]` | Require user approval for a specific tool |
-| `/cs pending` | List pending approvals with IDs and expiry timers |
-| `/cs approve <id>` | Approve a pending action (one-time) |
-| `/cs approve-always <id>` | Approve and add a permanent allow rule |
-| `/cs deny <id>` | Deny a pending action |
-
-### Prompt directives (advisory)
-
-| Command | Description |
-|---------|-------------|
-| `/cs directive add <text>` | Add a security directive injected into the LLM system prompt |
-| `/cs directive remove <index...>` | Remove directives by index |
-
-### Output enforcement (deterministic)
-
-| Command | Description |
-|---------|-------------|
-| `/cs enforce append <text>` | Auto-append text to every outbound message |
-| `/cs enforce require <text>` | Block messages that don't contain text |
-| `/cs enforce reject <text>` | Block messages that contain text |
-
-### Examples
-
-Check what's active:
+Send to your bot:
 ```
 /cs status
-/cs rules
 ```
 
-See what the agent's LLM system prompt looks like with directives injected:
+You should see:
 ```
-/cs directive preview
-```
-
-Block the agent from accessing a domain:
-```
-/cs block domain evil.com
+ClawSight status:
+  Mode: local
+  Rules loaded: 46
+  ...
 ```
 
-Require your approval before the agent installs any package:
+**That's it.** 46 rules are now active. Your agent can't run `curl`, access `.ssh/id_rsa`, create cron jobs, or connect to known exfiltration domains. You can add, remove, or modify any rule from Telegram.
+
+Try it:
 ```
-/cs confirm command pip install
+/cs rules                              ← see all active rules
+/cs block domain evil.com              ← block a domain
+/cs confirm command pip install        ← require your approval before pip install
+/cs remove 5                           ← remove a rule
 ```
 
-When the agent tries `pip install requests`, it will be blocked and you'll see a pending ID. Approve it:
-```
-/cs pending
-/cs approve a3f8
+---
+
+### Option 2: Connect to ClawSight SIEM
+
+Best for: streaming telemetry and enforcing remote policies via the ClawSight SIEM platform. The SIEM can run anywhere — a VPS, AWS, Vercel, or your local network.
+
+**Step 1: If your SIEM is on a remote server, set up an SSH tunnel**
+
+```bash
+# Forward local port 3000 to the SIEM running on your server
+ssh -L 3000:127.0.0.1:3000 user@your-siem-server
 ```
 
-Add a custom instruction to the agent's system prompt:
-```
-/cs directive add Do not access any database credentials
+Skip this if your SIEM has a public HTTPS URL (Vercel, AWS, etc.).
+
+**Step 2: Install with SIEM flags**
+
+Via SSH tunnel:
+```bash
+npx -y @cantinasecurity/clawsight install \
+  --mode enforce \
+  --platform-url http://127.0.0.1:3000 \
+  --token YOUR_TOKEN \
+  --agent-name researcher-agent \
+  --link
 ```
 
-Block piped shell execution patterns:
-```
-/cs block command curl
-/cs block command | bash
-/cs block command base64 -d
-```
-
-Block the agent from reading SSH keys or AWS credentials:
-```
-/cs block command cat ~/.ssh/id_rsa
-/cs block command .aws/credentials
+Or directly to a public SIEM:
+```bash
+npx -y @cantinasecurity/clawsight install \
+  --mode enforce \
+  --platform-url https://siem.example.com \
+  --token YOUR_TOKEN \
+  --agent-name researcher-agent \
+  --link
 ```
 
-Remove a rule you no longer need:
+**Step 3: Restart and verify**
+
+```bash
+openclaw gateway restart
 ```
-/cs remove 5
+
+Telemetry is now streaming to the SIEM — tool calls, messages, policy decisions, and agent inventory snapshots.
+
+
+## Managing Rules from Telegram
+
+All rules are managed live from your chat channel. No config files to edit, no restarts needed.
+
+### See what's active
+
 ```
+/cs status                              Show mode and rule counts
+/cs rules                               List all rules with IDs
+/cs directive preview                   See the full injected system prompt
+```
+
+### Block actions
+
+```
+/cs block command curl                  Block curl in shell commands
+/cs block command | bash                Block piping to bash
+/cs block command base64 -d             Block base64 decoding
+/cs block domain evil.com               Block a domain + subdomains
+/cs block tool web_search               Block a tool entirely
+/cs block command .aws/credentials      Block access to AWS credentials
+```
+
+### Require your approval before an action runs
+
+```
+/cs confirm command pip install         Require approval for pip install
+/cs confirm command npm install         Require approval for npm install
+/cs confirm tool exec                   Require approval for all exec calls
+```
+
+When the agent tries a confirmed action, it's blocked and you get a pending ID:
+```
+/cs pending                             See pending approvals
+/cs approve a3f8                        Approve (one-time)
+/cs approve-always a3f8                 Approve + create permanent allow rule
+/cs deny a3f8                           Deny
+```
+
+### Add instructions to the agent's prompt
+
+```
+/cs directive add Never share API keys in responses
+/cs directive add Always ask before deleting files
+/cs directives                          List all directives
+/cs directive remove 0                  Remove by index
+```
+
+### Remove or reset rules
+
+```
+/cs remove 5                            Remove rule #5
+/cs remove 5 6 7                        Remove multiple
+/cs reset confirm                       Reset everything to defaults
+```
+
+---
 
 ## Architecture
 
@@ -212,7 +237,7 @@ flowchart TD
     J -->|"LLM may call more tools<br/>or generate final response"| K
 
     K["<b>message_sending</b>"]
-    K -. "ClawSight: evaluate message rules<br/>+ output enforcement<br/>(append / require / reject)" .-> K
+    K -. "ClawSight: evaluate message rules<br/>+ output enforcement<br/>(require / reject)" .-> K
     K --> L
 
     L["Message sent to user<br/>(Telegram / Discord / Slack)"]
@@ -279,67 +304,40 @@ When a confirm rule matches, ClawSight blocks the tool call and creates a pendin
 9. Tool executes successfully
 ```
 
-Matching on retry uses `toolName + SHA256(params)` — not the tool call ID, which changes per attempt. Pending approvals expire after 5 minutes.
-
-Three resolution options:
+Pending approvals expire after 5 minutes. Three resolution options:
 - `/cs approve <id>` — one-time approval, this exact action only
 - `/cs approve-always <id>` — approve and add a permanent allow rule to `rules.json`
 - `/cs deny <id>` — deny, subsequent retries are blocked for the session
 
-## SIEM Mode
+## Configuration Reference
 
-To connect to the ClawSight SIEM platform for telemetry and remote policy enforcement:
+All configuration is done through OpenClaw's config system. See [docs/configuration.md](docs/configuration.md) for the full reference.
 
-### Audit mode (observe only)
+### Common operations
 
+Link to SIEM:
 ```bash
-npx -y @cantinasecurity/clawsight install \
-  --mode audit \
-  --platform-url https://your-siem.example.com \
-  --token YOUR_API_TOKEN \
-  --agent-name my-agent \
-  --link
-
+openclaw config set plugins.entries.clawsight.config.platformUrl http://127.0.0.1:3000
+openclaw config set plugins.entries.clawsight.config.apiToken YOUR_TOKEN
 openclaw gateway restart
 ```
 
-All agent activity is streamed to the SIEM. No actions are blocked — the platform logs everything for analysis.
-
-### Enforce mode (block on policy violations)
-
+Set agent name (shown in SIEM):
 ```bash
-npx -y @cantinasecurity/clawsight install \
-  --mode enforce \
-  --platform-url https://your-siem.example.com \
-  --token YOUR_API_TOKEN \
-  --agent-name my-agent \
-  --link
-
+openclaw config set plugins.entries.clawsight.config.agentName my-agent
 openclaw gateway restart
 ```
 
-The SIEM platform returns real-time allow/block/modify decisions for every tool call and outbound message. Includes LLM-powered intent drift detection.
-
-### Local + SIEM (enforce locally, observe remotely)
-
+Disable the plugin:
 ```bash
-npx -y @cantinasecurity/clawsight install \
-  --mode local \
-  --platform-url https://your-siem.example.com \
-  --token YOUR_API_TOKEN \
-  --link
-
+openclaw config set plugins.entries.clawsight.enabled false
 openclaw gateway restart
 ```
 
-Rules are enforced from the local `rules.json`. Telemetry is streamed to the SIEM for dashboards, alerts, and forensics.
+### All config keys
 
-## Configuration
-
-See [docs/configuration.md](docs/configuration.md) for the full reference with all keys, capture flags, network settings, and ready-to-paste presets.
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
 | `mode` | string | `"audit"` | `off`, `audit`, `enforce`, or `local` |
 | `platformUrl` | string | — | SIEM platform URL (required for audit/enforce, optional for local) |
 | `apiToken` | string | — | Platform API token (supports `${ENV_VAR}` syntax) |

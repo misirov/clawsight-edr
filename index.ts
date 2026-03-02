@@ -1488,13 +1488,7 @@ const plugin = {
         for (const rule of outputRules) {
           if (!rule.enforce || !rule.enforceValue) continue;
 
-          if (rule.enforce === "append_suffix" && rule.action === "modify") {
-            const suffix = rule.enforceValue;
-            if (!content.trimEnd().endsWith(suffix.trim())) {
-              content = content.trimEnd() + suffix;
-              modified = true;
-            }
-          } else if (rule.enforce === "require_contains" && rule.action === "block") {
+          if (rule.enforce === "require_contains" && rule.action === "block") {
             if (!content.toLowerCase().includes(rule.enforceValue.toLowerCase())) {
               emitWithTrace(
                 rt,
@@ -1821,14 +1815,6 @@ const plugin = {
           if (!store) return { text: "ClawSight is not in local mode." };
           const enforceSub = parts[1]?.toLowerCase();
 
-          if (enforceSub === "append" && parts.slice(2).join(" ").trim()) {
-            const suffix = parts.slice(2).join(" ");
-            const rule = await store.addRule({
-              scope: "output", action: "modify", enforce: "append_suffix",
-              enforceValue: suffix, priority: 1, reason: `Auto-append "${suffix}" to outbound messages`,
-            });
-            return { text: `Added enforced rule #${rule.id}: auto-append "${suffix}" to all outbound messages` };
-          }
           if (enforceSub === "require" && parts.slice(2).join(" ").trim()) {
             const required = parts.slice(2).join(" ");
             const rule = await store.addRule({
@@ -1847,7 +1833,6 @@ const plugin = {
           }
           return { text: [
             "Output enforcement (deterministic, guaranteed):",
-            "  /cs enforce append <text> — auto-append text to every outbound message",
             "  /cs enforce require <text> — block messages that don't contain text",
             "  /cs enforce reject <text> — block messages that contain text",
             "",
@@ -2035,7 +2020,6 @@ const plugin = {
           "  /cs directive preview — show full injected system + context prompt",
           "",
           "Output enforcement (deterministic — guaranteed, cannot be bypassed):",
-          "  /cs enforce append <text> — auto-append text to every outbound message",
           "  /cs enforce require <text> — block messages not containing text",
           "  /cs enforce reject <text> — block messages containing text",
           "",
@@ -2045,7 +2029,6 @@ const plugin = {
           "  /cs block tool web_search — block the web_search tool entirely",
           "  /cs confirm command npm install — require approval for npm install",
           "  /cs approve a3f8 — approve pending action a3f8",
-          "  /cs enforce append LOLOLOL — guarantee LOLOLOL on every message",
           "  /cs enforce require [verified] — block messages without [verified]",
           "  /cs enforce reject <script> — block messages containing <script>",
           "  /cs directive add Never share API keys in responses",
